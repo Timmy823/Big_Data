@@ -47,7 +47,7 @@ def load_history(fn):
     return history
 # # Reference
 # dimensions of our images.
-img_width, img_height = 227, 227
+img_width, img_height = 224, 224
 
 train_data_dir = './data/train'
 validation_data_dir = './data/validation'
