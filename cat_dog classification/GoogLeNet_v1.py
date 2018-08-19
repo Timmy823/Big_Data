@@ -68,7 +68,7 @@ def Inception(x,params):
 # # Reference
 
 # dimensions of our images.
-img_width, img_height = 227, 227
+img_width, img_height = 224, 224
 
 train_data_dir = './data/train'
 validation_data_dir = './data/validation'
@@ -106,10 +106,10 @@ validation_generator = test_datagen.flow_from_directory(
 # 判斷RGB是在矩陣中的第幾個元素?
 if K.image_data_format() == 'channels_first':
     input_shape = (3, img_width, img_height)
-	bn_axis = 1
+    bn_axis = 1
 else:
     input_shape = (img_width, img_height, 3)
-	bn_axis = 3
+    bn_axis = 3
     
 inpt = Input(input_shape)    
 # Convolution Net Layer 1~2    
