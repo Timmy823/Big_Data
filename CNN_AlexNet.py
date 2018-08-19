@@ -27,10 +27,7 @@ from keras.applications import VGG16
 from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import EarlyStopping
 from keras import backend as K
-#from vis.utils import utils
 from keras import activations
-#from vis.visualization import visualize_activation, get_num_filters
-#from vis.input_modifiers import Jitter
 
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 from keras.layers.normalization import BatchNormalization
