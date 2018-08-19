@@ -27,65 +27,13 @@ from keras.applications import VGG16
 from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import EarlyStopping
 from keras import backend as K
-#from vis.utils import utils
 from keras import activations
-#from vis.visualization import visualize_activation, get_num_filters
-#from vis.input_modifiers import Jitter
 
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 from keras.layers.normalization import BatchNormalization
 
 
 # # Functions
-def smooth_curve(points, factor=0.8):
-    smoothed = []
-    for point in points:
-        if smoothed:
-            previous = smoothed[-1]
-            smoothed.append(previous * factor + point * (1 - factor))
-        else:
-            smoothed.append(point)
-    return smoothed
-
-def plot_compare(history, steps=-1):
-    if steps < 0:
-        steps = len(history.history['acc'])
-    acc = smooth_curve(history.history['acc'][:steps])
-    val_acc = smooth_curve(history.history['val_acc'][:steps])
-    loss = smooth_curve(history.history['loss'][:steps])
-    val_loss = smooth_curve(history.history['val_loss'][:steps])
-    
-    plt.figure(figsize=(6, 4))
-    plt.plot(loss, c='#0c7cba', label='Train Loss')
-    plt.plot(val_loss, c='#0f9d58', label='Val Loss')
-    plt.xticks(range(0, len(loss), 5))
-    plt.xlim(0, len(loss))
-    plt.title('Train Loss: %.3f, Val Loss: %.3f' % (loss[-1], val_loss[-1]), fontsize=12)
-    plt.legend()
-    
-    plt.figure(figsize=(6, 4))
-    plt.plot(acc, c='#0c7cba', label='Train Acc')
-    plt.plot(val_acc, c='#0f9d58', label='Val Acc')
-    plt.xticks(range(0, len(acc), 5))
-    plt.xlim(0, len(acc))
-    plt.title('Train Accuracy: %.3f, Val Accuracy: %.3f' % (acc[-1], val_acc[-1]), fontsize=12)
-    plt.legend()
-    
-def deprocess_image(x):
-    # normalize tensor: center on 0., ensure std is 0.1
-    x -= x.mean()
-    x /= (x.std() + 1e-5)
-    x *= 0.1
-
-    # clip to [0, 1]
-    x += 0.5
-    x = np.clip(x, 0, 1)
-
-    # convert to RGB array
-    x *= 255
-    x = np.clip(x, 0, 255).astype('uint8')
-    return x
- 
 def save_history(history, fn):
     with open(fn, 'wb') as fw:
         pickle.dump(history.history, fw, protocol=2)
@@ -97,24 +45,11 @@ def load_history(fn):
     with open(fn, 'rb') as fr:
         history.history = pickle.load(fr)
     return history
-
-def jitter(img, amount=32):
-    ox, oy = np.random.randint(-amount, amount+1, 2)
-    return np.roll(np.roll(img, ox, -1), oy, -2), ox, oy
-
-def reverse_jitter(img, ox, oy):
-    return np.roll(np.roll(img, -ox, -1), -oy, -2)
-
-def plot_image(img):
-    plt.figure(figsize=(6, 6))
-    plt.imshow(img)
-    plt.axis('off')
-
-def Conv_Block(inpt,nb_filter,kernel_size,strides,bn_axis,with_conv_shortcut=False):
+def Conv_Block(inpt,nb_filter,kernel_size,strides,with_conv_shortcut=False):
     x = Conv2D(nb_filter,kernel_size,strides=strides,padding='same')(inpt)
-    x = BatchNormalization(axis=bn_axis)(x)
+    x = BatchNormalization(axis=1)(x)
     x = Conv2D(nb_filter,kernel_size,strides=1,padding='same')(x)
-    x = BatchNormalization(axis=bn_axis)(x)
+    x = BatchNormalization(axis=1)(x)
     if with_conv_shortcut:
         shortcut = Conv2D(nb_filter,kernel_size,strides=strides,padding='same')(inpt)
         shortcut = BatchNormalization(axis=bn_axis)(shortcut)
@@ -132,12 +67,6 @@ img_width, img_height = 224, 224
 
 train_data_dir = './data/train'
 validation_data_dir = './data/validation'
-
-nb_train_samples = 2000
-nb_validation_samples = 1000
-epochs = 50
-batch_size = 32
-
 
 # # Data Generator
 
@@ -175,37 +104,37 @@ validation_generator = test_datagen.flow_from_directory(
 # 判斷RGB是在矩陣中的第幾個元素?
 if K.image_data_format() == 'channels_first':
     input_shape = (3, img_width, img_height)
-	bn_axis = 1
+    bn_axis = 1
 else:
     input_shape = (img_width, img_height, 3)
-	bn_axis = 3
+    bn_axis = 3
     
 inpt = Input(input_shape) 
 x = ZeroPadding2D((3,3))(inpt)   
 # Convolution Net Layer 1~2    
 x = Conv2D(64,(7,7),strides=2,padding='valid', activation = 'relu')(x)
-x = BatchNormalization(axis=bn_axis)(x)
+x = BatchNormalization(axis=1)(x)
 
 x = MaxPooling2D(pool_size=(3,3),strides=2,padding='same')(x)
-x = Conv_Block(x,nb_filter=64,kernel_size=(3,3),strides=1,bn_axis=bn_axis)
-x = Conv_Block(x,nb_filter=64,kernel_size=(3,3),strides=1,bn_axis=bn_axis)
-x = Conv_Block(x,nb_filter=64,kernel_size=(3,3),strides=1,bn_axis=bn_axis)
+x = Conv_Block(x,nb_filter=64,kernel_size=(3,3),strides=1)
+x = Conv_Block(x,nb_filter=64,kernel_size=(3,3),strides=1)
+x = Conv_Block(x,nb_filter=64,kernel_size=(3,3),strides=1)
 
-x = Conv_Block(x,nb_filter=128,kernel_size=(3,3),strides=2,bn_axis=bn_axis,with_conv_shortcut=True)
-x = Conv_Block(x,nb_filter=128,kernel_size=(3,3),strides=1,bn_axis=bn_axis)
-x = Conv_Block(x,nb_filter=128,kernel_size=(3,3),strides=1,bn_axis=bn_axis)
-x = Conv_Block(x,nb_filter=128,kernel_size=(3,3),strides=1,bn_axis=bn_axis)
+x = Conv_Block(x,nb_filter=128,kernel_size=(3,3),strides=2,with_conv_shortcut=True)
+x = Conv_Block(x,nb_filter=128,kernel_size=(3,3),strides=1)
+x = Conv_Block(x,nb_filter=128,kernel_size=(3,3),strides=1)
+x = Conv_Block(x,nb_filter=128,kernel_size=(3,3),strides=1)
 
-x = Conv_Block(x,nb_filter=256,kernel_size=(3,3),strides=2,bn_axis=bn_axis,with_conv_shortcut=True)
-x = Conv_Block(x,nb_filter=256,kernel_size=(3,3),strides=1,bn_axis=bn_axis)
-x = Conv_Block(x,nb_filter=256,kernel_size=(3,3),strides=1,bn_axis=bn_axis)
-x = Conv_Block(x,nb_filter=256,kernel_size=(3,3),strides=1,bn_axis=bn_axis)
-x = Conv_Block(x,nb_filter=256,kernel_size=(3,3),strides=1,bn_axis=bn_axis)
-x = Conv_Block(x,nb_filter=256,kernel_size=(3,3),strides=1,bn_axis=bn_axis)
+x = Conv_Block(x,nb_filter=256,kernel_size=(3,3),strides=2,with_conv_shortcut=True)
+x = Conv_Block(x,nb_filter=256,kernel_size=(3,3),strides=1)
+x = Conv_Block(x,nb_filter=256,kernel_size=(3,3),strides=1)
+x = Conv_Block(x,nb_filter=256,kernel_size=(3,3),strides=1)
+x = Conv_Block(x,nb_filter=256,kernel_size=(3,3),strides=1)
+x = Conv_Block(x,nb_filter=256,kernel_size=(3,3),strides=1)
 
-x = Conv_Block(x,nb_filter=512,kernel_size=(3,3),strides=2,bn_axis=bn_axis,with_conv_shortcut=True)
-x = Conv_Block(x,nb_filter=512,kernel_size=(3,3),strides=1,bn_axis=bn_axis)
-x = Conv_Block(x,nb_filter=512,kernel_size=(3,3),strides=1,bn_axis=bn_axis)
+x = Conv_Block(x,nb_filter=512,kernel_size=(3,3),strides=2,with_conv_shortcut=True)
+x = Conv_Block(x,nb_filter=512,kernel_size=(3,3),strides=1)
+x = Conv_Block(x,nb_filter=512,kernel_size=(3,3),strides=1)
 
 x = AveragePooling2D(pool_size=(7,7))(x)
 x = Flatten()(x)
