@@ -167,8 +167,8 @@ data_gen_args = dict(rotation_range=0.2,
 myGene = trainGenerator(2,'data/train','image','label',data_gen_args,save_to_dir = None)
 
 model = unet()
-model.load_weights('saver/weights.05-0.19.hdf5')
-model_checkpoint = ModelCheckpoint('saver/weights.{epoch:02d}-{loss:.2f}.hdf5', monitor='loss',verbose=1, save_best_only=False,mode='min')
+#model.load_weights('saver/weights.05-0.19.hdf5')
+model_checkpoint = ModelCheckpoint('saver/weights.{epoch:02d}-{loss:.4f}.hdf5', monitor='loss',verbose=1, save_best_only=False,mode='min')
 history = model.fit_generator(myGene,steps_per_epoch=2000,epochs=5,callbacks=[model_checkpoint],verbose=1)
 #history = model.fit_generator(myGene,steps_per_epoch=200,epochs=3,verbose=1)
 #model.save('model_UNet.h5')
